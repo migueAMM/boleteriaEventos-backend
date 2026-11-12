@@ -28,6 +28,17 @@ public class TipoEntradaController {
         return ResponseEntity.ok(tipoEntradaService.listarTodos());
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<TipoEntradaResponseDTO> actualizar(@PathVariable Long id, @Valid @RequestBody TipoEntradaCreateDTO dto) {
+        return ResponseEntity.ok(tipoEntradaService.actualizar(id, dto));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+        tipoEntradaService.eliminar(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<TipoEntradaResponseDTO> obtenerPorId(@PathVariable Long id) {
         return ResponseEntity.ok(tipoEntradaService.obtenerPorId(id));

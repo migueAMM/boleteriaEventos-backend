@@ -28,6 +28,17 @@ public class AtraccionController {
         return ResponseEntity.ok(atraccionService.listarTodos());
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<AtraccionResponseDTO> actualizar(@PathVariable Long id, @Valid @RequestBody AtraccionCreateDTO dto) {
+        return ResponseEntity.ok(atraccionService.actualizar(id, dto));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+        atraccionService.eliminar(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<AtraccionResponseDTO> obtenerPorId(@PathVariable Long id) {
         return ResponseEntity.ok(atraccionService.obtenerPorId(id));

@@ -1,5 +1,6 @@
 package com.bd.boleteriaEventos_backend.controller;
 
+import com.bd.boleteriaEventos_backend.dto.DisponibilidadFuncionDTO;
 import com.bd.boleteriaEventos_backend.dto.ZonaCreateDTO;
 import com.bd.boleteriaEventos_backend.dto.ZonaResponseDTO;
 import com.bd.boleteriaEventos_backend.service.ZonaService;
@@ -28,9 +29,25 @@ public class ZonaController {
         return ResponseEntity.ok(zonaService.listarTodos());
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<ZonaResponseDTO> actualizar(@PathVariable Long id, @Valid @RequestBody ZonaCreateDTO dto) {
+        return ResponseEntity.ok(zonaService.actualizar(id, dto));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+        zonaService.eliminar(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ZonaResponseDTO> obtenerPorId(@PathVariable Long id) {
         return ResponseEntity.ok(zonaService.obtenerPorId(id));
+    }
+
+    @GetMapping("/funcion/{idFuncion}/disponibilidad")
+    public ResponseEntity<DisponibilidadFuncionDTO> disponibilidad(@PathVariable Long idFuncion) {
+        return ResponseEntity.ok(zonaService.disponibilidadPorFuncion(idFuncion));
     }
 
     @GetMapping("/funcion/{idFuncion}")

@@ -2,14 +2,17 @@ package com.bd.boleteriaEventos_backend.service;
 
 import com.bd.boleteriaEventos_backend.dto.NotificacionCreateDTO;
 import com.bd.boleteriaEventos_backend.dto.NotificacionResponseDTO;
+import com.bd.boleteriaEventos_backend.dto.NotificacionUpdateDTO;
 import com.bd.boleteriaEventos_backend.entity.Notificacion;
 import com.bd.boleteriaEventos_backend.entity.Reserva;
 import com.bd.boleteriaEventos_backend.entity.UsuarioSistema;
+import com.bd.boleteriaEventos_backend.exception.BusinessRuleException;
 import com.bd.boleteriaEventos_backend.exception.ResourceNotFoundException;
 import com.bd.boleteriaEventos_backend.repository.NotificacionRepository;
 import com.bd.boleteriaEventos_backend.repository.ReservaRepository;
 import com.bd.boleteriaEventos_backend.repository.UsuarioSistemaRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,16 +39,45 @@ public class NotificacionService {
                     .orElseThrow(() -> new ResourceNotFoundException("Reserva no encontrada con ID: " + dto.idReserva()));
         }
 
+        return mapToDTO(guardar(usuario, reserva, dto.asunto().trim(), dto.mensaje().trim(), LocalDateTime.now()));
+    }
+
+    @Transactional
+    public void notificarReserva(Reserva reserva, String asunto, String mensaje) {
+        guardar(reserva.getPerfilCliente().getUsuario(), reserva, asunto, mensaje, BoletaService.ahora());
+    }
+
+    private Notificacion guardar(UsuarioSistema usuario, Reserva reserva, String asunto, String mensaje, LocalDateTime fechaHora) {
         Notificacion notificacion = Notificacion.builder()
-                .asunto(dto.asunto().trim())
-                .mensaje(dto.mensaje().trim())
-                .fechaHora(LocalDateTime.now())
+                .asunto(asunto)
+                .mensaje(mensaje)
+                .fechaHora(fechaHora)
                 .leida(false)
                 .usuario(usuario)
                 .reserva(reserva)
                 .build();
 
-        return mapToDTO(notificacionRepository.save(notificacion));
+        return notificacionRepository.save(notificacion);
+    }
+
+    @Transactional
+    public NotificacionResponseDTO actualizar(Long id, NotificacionUpdateDTO dto) {
+        Notificacion registro = notificacionRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Notificación no encontrado con ID: " + id));
+        registro.setAsunto(dto.asunto().trim());
+        registro.setMensaje(dto.mensaje().trim());
+        return mapToDTO(registro);
+    }
+
+    @Transactional
+    public void eliminar(Long id) {
+        try {
+            if (notificacionRepository.eliminarSinCascada(id) == 0) {
+                throw new ResourceNotFoundException("Notificación no encontrado con ID: " + id);
+            }
+        } catch (DataIntegrityViolationException ex) {
+            throw new BusinessRuleException("El registro tiene dependencias y no se puede eliminar");
+        }
     }
 
     public List<NotificacionResponseDTO> listarTodos() {

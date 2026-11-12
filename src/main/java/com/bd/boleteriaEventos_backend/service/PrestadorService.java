@@ -11,10 +11,12 @@ import com.bd.boleteriaEventos_backend.repository.MunicipioRepository;
 import com.bd.boleteriaEventos_backend.repository.PrestadorRepository;
 import com.bd.boleteriaEventos_backend.repository.TipoPrestadorRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -46,6 +48,40 @@ public class PrestadorService {
                 .build();
 
         return mapToDTO(prestadorRepository.save(prestador));
+    }
+
+    @Transactional
+    public PrestadorResponseDTO actualizar(Long id, PrestadorCreateDTO dto) {
+        Prestador registro = prestadorRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Prestador no encontrado con ID: " + id));
+        String nit = dto.nit().trim();
+        if (prestadorRepository.findByNit(nit).filter(p -> !id.equals(p.getIdPrestador())).isPresent()) {
+            throw new BusinessRuleException("Ya existe un prestador registrado con el NIT: " + nit);
+        }
+        registro.setMunicipio(municipioRepository.findById(dto.idMunicipio())
+                .orElseThrow(() -> new ResourceNotFoundException("Municipio no encontrado con ID: " + dto.idMunicipio())));
+        registro.setTipoPrestador(tipoPrestadorRepository.findById(dto.idTipoPrestador())
+                .orElseThrow(() -> new ResourceNotFoundException("Tipo de prestador no encontrado con ID: " + dto.idTipoPrestador())));
+        registro.setNit(nit);
+        registro.setNombre(dto.nombre().trim());
+        registro.setCorreo(dto.correo().trim().toLowerCase(Locale.ROOT));
+        try {
+            prestadorRepository.flush();
+        } catch (DataIntegrityViolationException ex) {
+            throw new BusinessRuleException("No se pudo actualizar el prestador por un conflicto de integridad");
+        }
+        return mapToDTO(registro);
+    }
+
+    @Transactional
+    public void eliminar(Long id) {
+        try {
+            if (prestadorRepository.eliminarSinCascada(id) == 0) {
+                throw new ResourceNotFoundException("Prestador no encontrado con ID: " + id);
+            }
+        } catch (DataIntegrityViolationException ex) {
+            throw new BusinessRuleException("El registro tiene dependencias y no se puede eliminar");
+        }
     }
 
     public List<PrestadorResponseDTO> listarTodos() {

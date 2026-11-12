@@ -2,6 +2,7 @@ package com.bd.boleteriaEventos_backend.service;
 
 import com.bd.boleteriaEventos_backend.dto.PerfilClienteCreateDTO;
 import com.bd.boleteriaEventos_backend.dto.PerfilClienteResponseDTO;
+import com.bd.boleteriaEventos_backend.dto.PerfilClienteUpdateDTO;
 import com.bd.boleteriaEventos_backend.entity.PerfilCliente;
 import com.bd.boleteriaEventos_backend.entity.UsuarioSistema;
 import com.bd.boleteriaEventos_backend.exception.BusinessRuleException;
@@ -9,6 +10,7 @@ import com.bd.boleteriaEventos_backend.exception.ResourceNotFoundException;
 import com.bd.boleteriaEventos_backend.repository.PerfilClienteRepository;
 import com.bd.boleteriaEventos_backend.repository.UsuarioSistemaRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,6 +45,37 @@ public class PerfilClienteService {
                 .build();
 
         return mapToDTO(perfilClienteRepository.save(perfil));
+    }
+
+    @Transactional
+    public PerfilClienteResponseDTO actualizar(Long id, PerfilClienteUpdateDTO dto) {
+        PerfilCliente perfil = perfilClienteRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Perfil no encontrado con ID: " + id));
+        String documento = dto.documento().trim();
+        if (perfilClienteRepository.findByDocumento(documento).filter(p -> !id.equals(p.getIdPerfil())).isPresent()) {
+            throw new BusinessRuleException("Ya existe un perfil con el documento: " + documento);
+        }
+
+        perfil.setDocumento(documento);
+        perfil.setNombre(dto.nombre().trim());
+        perfil.setTelefono(dto.telefono() != null ? dto.telefono().trim() : null);
+        try {
+            perfilClienteRepository.flush();
+        } catch (DataIntegrityViolationException ex) {
+            throw new BusinessRuleException("No se pudo actualizar el perfil por un conflicto de integridad");
+        }
+        return mapToDTO(perfil);
+    }
+
+    @Transactional
+    public void eliminar(Long id) {
+        try {
+            if (perfilClienteRepository.eliminarSinCascada(id) == 0) {
+                throw new ResourceNotFoundException("Perfil no encontrado con ID: " + id);
+            }
+        } catch (DataIntegrityViolationException ex) {
+            throw new BusinessRuleException("El registro tiene dependencias y no se puede eliminar");
+        }
     }
 
     public List<PerfilClienteResponseDTO> listarTodos() {

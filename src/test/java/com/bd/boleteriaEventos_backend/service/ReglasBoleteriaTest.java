@@ -28,7 +28,7 @@ class ReglasBoleteriaTest {
     void rechazaHorariosIgualesYSolapadosYAdmiteFuncionesContiguas() {
         FuncionRepository funciones = mock(FuncionRepository.class);
         AtraccionRepository atracciones = mock(AtraccionRepository.class);
-        FuncionService servicio = new FuncionService(funciones, atracciones, boletas, bloqueo);
+        FuncionService servicio = new FuncionService(funciones, atracciones, boletas, bloqueo, mock(NotificacionService.class));
         var fecha = BoletaService.ahora().toLocalDate().plusDays(1);
         Atraccion atraccion = Atraccion.builder().idAtraccion(1L).build();
         when(atracciones.findById(1L)).thenReturn(Optional.of(atraccion));
@@ -49,7 +49,7 @@ class ReglasBoleteriaTest {
         ComboRepository combos = mock(ComboRepository.class);
         AtraccionRepository atracciones = mock(AtraccionRepository.class);
         ComboAtraccionRepository composicion = mock(ComboAtraccionRepository.class);
-        ComboService servicio = new ComboService(combos, atracciones, composicion);
+        ComboService servicio = new ComboService(combos, atracciones, composicion, boletas, bloqueo);
         when(combos.save(any(Combo.class))).thenAnswer(invocation -> {
             Combo combo = invocation.getArgument(0);
             combo.setIdCombo(1L);
@@ -94,8 +94,9 @@ class ReglasBoleteriaTest {
 
     @Test
     void expirarAnulaLasBoletasActivasDeLaReserva() {
+        NotificacionService notificaciones = mock(NotificacionService.class);
         ReservaService servicio = new ReservaService(reservas, mock(PerfilClienteRepository.class),
-                mock(PlanRepository.class), boletas, mock(BoletaService.class), bloqueo);
+                mock(PlanRepository.class), boletas, mock(BoletaService.class), bloqueo, notificaciones);
         Reserva pendiente = Reserva.builder().idReserva(3L).estado("PENDIENTE")
                 .fechaHora(BoletaService.ahora().minusMinutes(16)).build();
         Boleta activa = Boleta.builder().estado("ACTIVA").build();
@@ -105,6 +106,7 @@ class ReglasBoleteriaTest {
 
         servicio.expirarPendientes();
 
+        verify(notificaciones).notificarReserva(eq(pendiente), eq("Reserva expirada"), anyString());
         assertEquals("EXPIRADA", pendiente.getEstado());
         assertEquals("ANULADA", activa.getEstado());
     }
@@ -119,15 +121,20 @@ class ReglasBoleteriaTest {
     @Test
     void cancelarAnulaLasActivasYConservaLosEstadosFinales() {
         FuncionRepository funciones = mock(FuncionRepository.class);
-        FuncionService servicio = new FuncionService(funciones, mock(AtraccionRepository.class), boletas, bloqueo);
+        NotificacionService notificaciones = mock(NotificacionService.class);
+        FuncionService servicio = new FuncionService(funciones, mock(AtraccionRepository.class), boletas, bloqueo, notificaciones);
         Funcion funcion = Funcion.builder().idFuncion(1L).estado("PROGRAMADA").build();
-        Boleta activa = Boleta.builder().estado("ACTIVA").build();
+        Reserva afectada = Reserva.builder().idReserva(2L).build();
+        Boleta activa = Boleta.builder().estado("ACTIVA").reserva(afectada).build();
         Boleta usada = Boleta.builder().estado("USADA").build();
         Boleta anulada = Boleta.builder().estado("ANULADA").build();
         when(funciones.findById(1L)).thenReturn(Optional.of(funcion));
         when(boletas.findByZonaFuncionIdFuncion(1L)).thenReturn(List.of(activa, usada, anulada));
 
         servicio.cancelar(1L);
+        servicio.cancelar(1L);
+
+        verify(notificaciones).notificarReserva(eq(afectada), eq("Función cancelada"), anyString());
 
         assertEquals("CANCELADA", funcion.getEstado());
         assertEquals("ANULADA", activa.getEstado());

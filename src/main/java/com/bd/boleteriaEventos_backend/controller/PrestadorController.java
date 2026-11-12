@@ -28,6 +28,17 @@ public class PrestadorController {
         return ResponseEntity.ok(prestadorService.listarTodos());
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<PrestadorResponseDTO> actualizar(@PathVariable Long id, @Valid @RequestBody PrestadorCreateDTO dto) {
+        return ResponseEntity.ok(prestadorService.actualizar(id, dto));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+        prestadorService.eliminar(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<PrestadorResponseDTO> obtenerPorId(@PathVariable Long id) {
         return ResponseEntity.ok(prestadorService.obtenerPorId(id));

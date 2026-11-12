@@ -8,6 +8,7 @@ import com.bd.boleteriaEventos_backend.exception.BusinessRuleException;
 import com.bd.boleteriaEventos_backend.exception.ResourceNotFoundException;
 import com.bd.boleteriaEventos_backend.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,7 +21,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-
 
 @Service
 @RequiredArgsConstructor
@@ -194,6 +194,34 @@ public class BoletaService {
         }
         anularVigente(boleta);
         return mapToDTO(boleta);
+    }
+
+    public BoletaResponseDTO actualizar(Long id) {
+        buscar(id);
+        throw new BusinessRuleException("Los datos de la boleta son inmutables. Usa las operaciones de ingreso o anulación");
+    }
+
+    private Boleta buscar(Long id) {
+        return boletaRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Boleta no encontrada con ID: " + id));
+    }
+
+    @Transactional
+    public void eliminar(Long id) {
+        bloqueo.bloquearEscrituras();
+        Boleta boleta = buscar(id);
+        String estadoReserva = boleta.getReserva().getEstado();
+        if (!"ANULADA".equals(boleta.getEstado()) || boleta.getCombo() != null
+                || !("CONFIRMADA".equals(estadoReserva) || "EXPIRADA".equals(estadoReserva))) {
+            throw new BusinessRuleException("Solo se pueden eliminar boletas individuales anuladas de reservas finalizadas");
+        }
+        try {
+            if (boletaRepository.eliminarSinCascada(id) == 0) {
+                throw new ResourceNotFoundException("Boleta no encontrado con ID: " + id);
+            }
+        } catch (DataIntegrityViolationException ex) {
+            throw new BusinessRuleException("El registro tiene dependencias y no se puede eliminar");
+        }
     }
 
     public List<BoletaResponseDTO> listarTodos() {

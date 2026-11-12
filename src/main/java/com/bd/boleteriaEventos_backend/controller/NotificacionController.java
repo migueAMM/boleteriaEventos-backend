@@ -2,6 +2,7 @@ package com.bd.boleteriaEventos_backend.controller;
 
 import com.bd.boleteriaEventos_backend.dto.NotificacionCreateDTO;
 import com.bd.boleteriaEventos_backend.dto.NotificacionResponseDTO;
+import com.bd.boleteriaEventos_backend.dto.NotificacionUpdateDTO;
 import com.bd.boleteriaEventos_backend.service.NotificacionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,17 @@ public class NotificacionController {
     @GetMapping
     public ResponseEntity<List<NotificacionResponseDTO>> listarTodos() {
         return ResponseEntity.ok(notificacionService.listarTodos());
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<NotificacionResponseDTO> actualizar(@PathVariable Long id, @Valid @RequestBody NotificacionUpdateDTO dto) {
+        return ResponseEntity.ok(notificacionService.actualizar(id, dto));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+        notificacionService.eliminar(id);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{id}")

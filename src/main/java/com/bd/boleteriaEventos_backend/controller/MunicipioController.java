@@ -28,6 +28,17 @@ public class MunicipioController {
         return ResponseEntity.ok(municipioService.listarTodos());
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<MunicipioResponseDTO> actualizar(@PathVariable Long id, @Valid @RequestBody MunicipioCreateDTO dto) {
+        return ResponseEntity.ok(municipioService.actualizar(id, dto));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+        municipioService.eliminar(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<MunicipioResponseDTO> obtenerPorId(@PathVariable Long id) {
         return ResponseEntity.ok(municipioService.obtenerPorId(id));

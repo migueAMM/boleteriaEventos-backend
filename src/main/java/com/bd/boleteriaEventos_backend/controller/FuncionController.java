@@ -2,6 +2,7 @@ package com.bd.boleteriaEventos_backend.controller;
 
 import com.bd.boleteriaEventos_backend.dto.FuncionCreateDTO;
 import com.bd.boleteriaEventos_backend.dto.FuncionResponseDTO;
+import com.bd.boleteriaEventos_backend.dto.FuncionUpdateDTO;
 import com.bd.boleteriaEventos_backend.service.FuncionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +32,17 @@ public class FuncionController {
     @PatchMapping("/{id}/cancelar")
     public ResponseEntity<FuncionResponseDTO> cancelar(@PathVariable Long id) {
         return ResponseEntity.ok(funcionService.cancelar(id));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<FuncionResponseDTO> actualizar(@PathVariable Long id, @Valid @RequestBody FuncionUpdateDTO dto) {
+        return ResponseEntity.ok(funcionService.actualizar(id, dto));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+        funcionService.eliminar(id);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{id}")

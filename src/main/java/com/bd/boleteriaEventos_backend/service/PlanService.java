@@ -4,14 +4,17 @@ import com.bd.boleteriaEventos_backend.dto.PlanCreateDTO;
 import com.bd.boleteriaEventos_backend.dto.PlanResponseDTO;
 import com.bd.boleteriaEventos_backend.entity.Plan;
 import com.bd.boleteriaEventos_backend.entity.Prestador;
+import com.bd.boleteriaEventos_backend.exception.BusinessRuleException;
 import com.bd.boleteriaEventos_backend.exception.ResourceNotFoundException;
 import com.bd.boleteriaEventos_backend.repository.PlanRepository;
 import com.bd.boleteriaEventos_backend.repository.PrestadorRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -34,6 +37,29 @@ public class PlanService {
                 .build();
 
         return mapToDTO(planRepository.save(plan));
+    }
+
+    @Transactional
+    public PlanResponseDTO actualizar(Long id, PlanCreateDTO dto) {
+        Plan registro = planRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Plan no encontrado con ID: " + id));
+        registro.setPrestador(prestadorRepository.findById(dto.idPrestador())
+                .orElseThrow(() -> new ResourceNotFoundException("Prestador no encontrado con ID: " + dto.idPrestador())));
+        registro.setNombre(dto.nombre().trim());
+        registro.setDescripcion(dto.descripcion());
+        registro.setEstado(dto.estado().trim().toUpperCase(Locale.ROOT));
+        return mapToDTO(registro);
+    }
+
+    @Transactional
+    public void eliminar(Long id) {
+        try {
+            if (planRepository.eliminarSinCascada(id) == 0) {
+                throw new ResourceNotFoundException("Plan no encontrado con ID: " + id);
+            }
+        } catch (DataIntegrityViolationException ex) {
+            throw new BusinessRuleException("El registro tiene dependencias y no se puede eliminar");
+        }
     }
 
     public List<PlanResponseDTO> listarTodos() {

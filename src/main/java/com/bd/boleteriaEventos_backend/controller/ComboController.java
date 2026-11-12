@@ -2,6 +2,7 @@ package com.bd.boleteriaEventos_backend.controller;
 
 import com.bd.boleteriaEventos_backend.dto.ComboCreateDTO;
 import com.bd.boleteriaEventos_backend.dto.ComboResponseDTO;
+import com.bd.boleteriaEventos_backend.dto.ComboUpdateDTO;
 import com.bd.boleteriaEventos_backend.service.ComboService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,18 @@ public class ComboController {
     @GetMapping
     public ResponseEntity<List<ComboResponseDTO>> listarTodos() {
         return ResponseEntity.ok(comboService.listarTodos());
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ComboResponseDTO> actualizar(@PathVariable Long id,
+            @Valid @RequestBody ComboUpdateDTO dto) {
+        return ResponseEntity.ok(comboService.actualizar(id, dto));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+        comboService.eliminar(id);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{id}")

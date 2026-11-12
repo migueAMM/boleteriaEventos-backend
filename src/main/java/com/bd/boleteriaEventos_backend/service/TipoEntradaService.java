@@ -7,6 +7,7 @@ import com.bd.boleteriaEventos_backend.exception.BusinessRuleException;
 import com.bd.boleteriaEventos_backend.exception.ResourceNotFoundException;
 import com.bd.boleteriaEventos_backend.repository.TipoEntradaRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +33,32 @@ public class TipoEntradaService {
                 .build();
 
         return mapToDTO(tipoEntradaRepository.save(tipo));
+    }
+
+    @Transactional
+    public TipoEntradaResponseDTO actualizar(Long id, TipoEntradaCreateDTO dto) {
+        TipoEntrada tipo = tipoEntradaRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Tipo de entrada no encontrado con ID: " + id));
+        Boolean esAdulto = dto.esAdulto() != null ? dto.esAdulto() : tipo.getEsAdulto();
+        if (Boolean.TRUE.equals(esAdulto) && Boolean.TRUE.equals(dto.requiereAdulto())) {
+            throw new BusinessRuleException("Una entrada de adulto no puede requerir acompañamiento");
+        }
+        tipo.setNombre(dto.nombre().trim());
+        tipo.setPorcentajeDescuento(dto.porcentajeDescuento());
+        tipo.setRequiereAdulto(dto.requiereAdulto());
+        tipo.setEsAdulto(esAdulto);
+        return mapToDTO(tipo);
+    }
+
+    @Transactional
+    public void eliminar(Long id) {
+        try {
+            if (tipoEntradaRepository.eliminarSinCascada(id) == 0) {
+                throw new ResourceNotFoundException("TipoEntrada no encontrado con ID: " + id);
+            }
+        } catch (DataIntegrityViolationException ex) {
+            throw new BusinessRuleException("El registro tiene dependencias y no se puede eliminar");
+        }
     }
 
     public List<TipoEntradaResponseDTO> listarTodos() {

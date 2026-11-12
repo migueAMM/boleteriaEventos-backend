@@ -28,6 +28,17 @@ public class PlanController {
         return ResponseEntity.ok(planService.listarTodos());
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<PlanResponseDTO> actualizar(@PathVariable Long id, @Valid @RequestBody PlanCreateDTO dto) {
+        return ResponseEntity.ok(planService.actualizar(id, dto));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+        planService.eliminar(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<PlanResponseDTO> obtenerPorId(@PathVariable Long id) {
         return ResponseEntity.ok(planService.obtenerPorId(id));

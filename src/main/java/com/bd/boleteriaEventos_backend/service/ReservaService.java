@@ -2,6 +2,7 @@ package com.bd.boleteriaEventos_backend.service;
 
 import com.bd.boleteriaEventos_backend.dto.ReservaCreateDTO;
 import com.bd.boleteriaEventos_backend.dto.ReservaResponseDTO;
+import com.bd.boleteriaEventos_backend.dto.ReservaUpdateDTO;
 import com.bd.boleteriaEventos_backend.entity.Boleta;
 import com.bd.boleteriaEventos_backend.entity.PerfilCliente;
 import com.bd.boleteriaEventos_backend.entity.Plan;
@@ -13,6 +14,7 @@ import com.bd.boleteriaEventos_backend.repository.PerfilClienteRepository;
 import com.bd.boleteriaEventos_backend.repository.PlanRepository;
 import com.bd.boleteriaEventos_backend.repository.ReservaRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +33,7 @@ public class ReservaService {
     private final BoletaRepository boletaRepository;
     private final BoletaService boletaService;
     private final BloqueoBoleteria bloqueo;
+    private final NotificacionService notificacionService;
 
     @Transactional
     public ReservaResponseDTO crear(ReservaCreateDTO dto) {
@@ -82,6 +85,8 @@ public class ReservaService {
             BoletaService.validarFuncionEnVenta(boleta.getZona().getFuncion(), ahora);
         }
         reserva.setEstado("CONFIRMADA");
+        notificacionService.notificarReserva(reserva, "Reserva confirmada",
+                "La reserva " + reserva.getIdReserva() + " fue confirmada.");
         return mapToDTO(reserva);
     }
 
@@ -96,6 +101,44 @@ public class ReservaService {
         for (Reserva reserva : reservaRepository.findByEstadoAndFechaHoraLessThanEqual("PENDIENTE", fechaLimite)) {
             reserva.setEstado("EXPIRADA");
             boletaRepository.findByReservaIdReserva(reserva.getIdReserva()).forEach(BoletaService::anularVigente);
+            notificacionService.notificarReserva(reserva, "Reserva expirada",
+                    "La reserva " + reserva.getIdReserva() + " expiró y se liberaron sus cupos.");
+        }
+    }
+
+    @Transactional
+    public ReservaResponseDTO actualizar(Long id, ReservaUpdateDTO dto) {
+        bloqueo.bloquearEscrituras();
+        Reserva reserva = buscarPendienteEditable(id);
+        Plan plan = dto.idPlan() == null ? null : planRepository.findById(dto.idPlan())
+                .orElseThrow(() -> new ResourceNotFoundException("Plan no encontrado con ID: " + dto.idPlan()));
+        reserva.setPlan(plan);
+        return mapToDTO(reserva);
+    }
+
+    private Reserva buscarPendienteEditable(Long id) {
+        Reserva reserva = reservaRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Reserva no encontrada con ID: " + id));
+        if (!"PENDIENTE".equals(reserva.getEstado())
+                || !BoletaService.ahora().isBefore(reserva.getFechaHora().plusMinutes(BoletaService.MINUTOS_RESERVA))) {
+            throw new BusinessRuleException("La reserva debe estar pendiente y vigente");
+        }
+        return reserva;
+    }
+
+    @Transactional
+    public void eliminar(Long id) {
+        bloqueo.bloquearEscrituras();
+        buscarPendienteEditable(id);
+        if (boletaRepository.existsByReservaIdReserva(id)) {
+            throw new BusinessRuleException("No se puede eliminar una reserva con boletas");
+        }
+        try {
+            if (reservaRepository.eliminarSinCascada(id) == 0) {
+                throw new ResourceNotFoundException("Reserva no encontrado con ID: " + id);
+            }
+        } catch (DataIntegrityViolationException ex) {
+            throw new BusinessRuleException("El registro tiene dependencias y no se puede eliminar");
         }
     }
 

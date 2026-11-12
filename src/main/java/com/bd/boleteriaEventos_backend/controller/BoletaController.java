@@ -38,6 +38,17 @@ public class BoletaController {
         return ResponseEntity.ok(boletaService.anular(id));
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<BoletaResponseDTO> actualizar(@PathVariable Long id) {
+        return ResponseEntity.ok(boletaService.actualizar(id));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+        boletaService.eliminar(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<BoletaResponseDTO> obtenerPorId(@PathVariable Long id) {
         return ResponseEntity.ok(boletaService.obtenerPorId(id));

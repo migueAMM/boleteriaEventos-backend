@@ -1,0 +1,12 @@
+package com.bd.boleteriaEventos_backend.repository;
+
+import com.bd.boleteriaEventos_backend.entity.Combo;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public interface ComboRepository extends JpaRepository<Combo, Long> {
+    List<Combo> findByEstado(String estado);
+}

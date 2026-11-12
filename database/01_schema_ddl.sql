@@ -7,6 +7,25 @@ SET DEFINE OFF;
 -- ============================================================
 -- DROP TABLES (reverse dependency order) for idempotency
 -- ============================================================
+-- Tablas del modelo actual
+DROP TABLE BD1.NOTIFICACIONES       CASCADE CONSTRAINTS;
+DROP TABLE BD1.BOLETAS              CASCADE CONSTRAINTS;
+DROP TABLE BD1.RESERVAS             CASCADE CONSTRAINTS;
+DROP TABLE BD1.COMBOS_ATRACCIONES   CASCADE CONSTRAINTS;
+DROP TABLE BD1.ZONAS                CASCADE CONSTRAINTS;
+DROP TABLE BD1.FUNCIONES            CASCADE CONSTRAINTS;
+DROP TABLE BD1.ATRACCIONES          CASCADE CONSTRAINTS;
+DROP TABLE BD1.PERFILES_CLIENTE     CASCADE CONSTRAINTS;
+DROP TABLE BD1.USUARIOS_SISTEMA     CASCADE CONSTRAINTS;
+DROP TABLE BD1.PLANES               CASCADE CONSTRAINTS;
+DROP TABLE BD1.PRESTADORES          CASCADE CONSTRAINTS;
+DROP TABLE BD1.COMBOS               CASCADE CONSTRAINTS;
+DROP TABLE BD1.TIPOS_ENTRADA        CASCADE CONSTRAINTS;
+DROP TABLE BD1.ROLES                CASCADE CONSTRAINTS;
+DROP TABLE BD1.TIPOS_PRESTADOR      CASCADE CONSTRAINTS;
+DROP TABLE BD1.MUNICIPIOS           CASCADE CONSTRAINTS;
+
+-- Limpieza de tablas previas/antiguas si existieran
 DROP TABLE BD1.PAGOS_TRANSACCION    CASCADE CONSTRAINTS;
 DROP TABLE BD1.TICKETS_INSCRIPCION  CASCADE CONSTRAINTS;
 DROP TABLE BD1.ORDENES_COMPRA       CASCADE CONSTRAINTS;
@@ -17,215 +36,232 @@ DROP TABLE BD1.ORGANIZADORES        CASCADE CONSTRAINTS;
 DROP TABLE BD1.USUARIOS             CASCADE CONSTRAINTS;
 
 -- ============================================================
--- 1. USUARIOS
+-- 1. MUNICIPIOS
 -- ============================================================
-CREATE TABLE BD1.USUARIOS (
-    id_usuario        NUMBER GENERATED ALWAYS AS IDENTITY,
-    tipo_documento    VARCHAR2(20),
-    numero_documento  VARCHAR2(30),
-    nombres           VARCHAR2(100),
-    apellidos         VARCHAR2(100),
-    email             VARCHAR2(150),
-    password_hash     VARCHAR2(255),
-    telefono          VARCHAR2(20),
-    fecha_nacimiento  DATE,
-    genero            VARCHAR2(20),
-    rol               VARCHAR2(20),
-    fecha_registro    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    activo            NUMBER(1) DEFAULT 1,
-    CONSTRAINT PK_USUARIOS          PRIMARY KEY (id_usuario),
-    CONSTRAINT UQ_USUARIO_DOCUMENTO UNIQUE (numero_documento),
-    CONSTRAINT UQ_USUARIO_EMAIL     UNIQUE (email),
-    CONSTRAINT CHK_USUARIO_ROL      CHECK (rol IN ('ADMIN','ORGANIZADOR','COMPRADOR'))
+CREATE TABLE BD1.MUNICIPIOS (
+    id_municipio        NUMBER GENERATED ALWAYS AS IDENTITY,
+    nombre              VARCHAR2(100) NOT NULL,
+    departamento        VARCHAR2(100) NOT NULL,
+    CONSTRAINT PK_MUNICIPIOS PRIMARY KEY (id_municipio)
 );
 
 -- ============================================================
--- 2. ORGANIZADORES
+-- 2. TIPOS_PRESTADOR
 -- ============================================================
-CREATE TABLE BD1.ORGANIZADORES (
-    id_organizador     NUMBER GENERATED ALWAYS AS IDENTITY,
-    id_usuario         NUMBER NOT NULL,
-    nit                VARCHAR2(30),
-    razon_social       VARCHAR2(200),
-    nombre_comercial   VARCHAR2(200),
-    descripcion        CLOB,
-    sitio_web          VARCHAR2(300),
-    telefono_contacto  VARCHAR2(20),
-    verificado         NUMBER(1) DEFAULT 0,
-    CONSTRAINT PK_ORGANIZADORES          PRIMARY KEY (id_organizador),
-    CONSTRAINT FK_ORGANIZADORES_USUARIO  FOREIGN KEY (id_usuario) REFERENCES BD1.USUARIOS (id_usuario),
-    CONSTRAINT UQ_ORGANIZADOR_NIT        UNIQUE (nit)
+CREATE TABLE BD1.TIPOS_PRESTADOR (
+    id_tipo_prestador   NUMBER GENERATED ALWAYS AS IDENTITY,
+    nombre              VARCHAR2(100) NOT NULL,
+    CONSTRAINT PK_TIPOS_PRESTADOR PRIMARY KEY (id_tipo_prestador)
 );
 
 -- ============================================================
--- 3. EVENTOS
+-- 3. PRESTADORES
 -- ============================================================
-CREATE TABLE BD1.EVENTOS (
-    id_evento                    NUMBER GENERATED ALWAYS AS IDENTITY,
-    id_organizador               NUMBER NOT NULL,
-    titulo                       VARCHAR2(300),
-    slug                         VARCHAR2(300),
-    descripcion                  CLOB,
-    tipo_evento                  VARCHAR2(30),
-    ciudad                       VARCHAR2(100),
-    direccion                    VARCHAR2(300),
-    lugar_nombre                 VARCHAR2(200),
-    fecha_inicio_evento          TIMESTAMP,
-    fecha_fin_evento             TIMESTAMP,
-    fecha_apertura_inscripciones TIMESTAMP,
-    fecha_cierre_inscripciones   TIMESTAMP,
-    imagen_banner_url            VARCHAR2(500),
-    aforo_maximo_total           NUMBER,
-    estado                       VARCHAR2(20),
-    CONSTRAINT PK_EVENTOS              PRIMARY KEY (id_evento),
-    CONSTRAINT FK_EVENTOS_ORGANIZADOR  FOREIGN KEY (id_organizador) REFERENCES BD1.ORGANIZADORES (id_organizador),
-    CONSTRAINT UQ_EVENTO_SLUG          UNIQUE (slug),
-    CONSTRAINT CHK_EVENTO_TIPO         CHECK (tipo_evento IN ('DEPORTIVO','CONCIERTO','CONFERENCIA','FESTIVAL','OTRO')),
-    CONSTRAINT CHK_EVENTO_ESTADO       CHECK (estado IN ('BORRADOR','PUBLICADO','AGOTADO','FINALIZADO','CANCELADO'))
+CREATE TABLE BD1.PRESTADORES (
+    id_prestador        NUMBER GENERATED ALWAYS AS IDENTITY,
+    nit                 VARCHAR2(30)  NOT NULL,
+    nombre              VARCHAR2(150) NOT NULL,
+    correo              VARCHAR2(150) NOT NULL,
+    id_municipio        NUMBER        NOT NULL,
+    id_tipo_prestador   NUMBER        NOT NULL,
+    CONSTRAINT PK_PRESTADORES PRIMARY KEY (id_prestador),
+    CONSTRAINT UQ_PRESTADOR_NIT UNIQUE (nit),
+    CONSTRAINT FK_PRESTADOR_MUNICIPIO FOREIGN KEY (id_municipio) REFERENCES BD1.MUNICIPIOS (id_municipio),
+    CONSTRAINT FK_PRESTADOR_TIPO FOREIGN KEY (id_tipo_prestador) REFERENCES BD1.TIPOS_PRESTADOR (id_tipo_prestador)
 );
 
 -- ============================================================
--- 4. CATEGORIAS_EVENTO
+-- 4. PLANES
 -- ============================================================
-CREATE TABLE BD1.CATEGORIAS_EVENTO (
-    id_categoria       NUMBER GENERATED ALWAYS AS IDENTITY,
-    id_evento          NUMBER NOT NULL,
-    nombre             VARCHAR2(100),
-    descripcion        VARCHAR2(500),
-    precio_base        NUMBER(12,2),
-    cargo_servicio     NUMBER(12,2),
-    cupo_maximo        NUMBER,
-    cupos_disponibles  NUMBER,
-    edad_minima        NUMBER,
-    edad_maxima        NUMBER,
-    incluye_kit        NUMBER(1) DEFAULT 0,
-    fecha_inicio_venta TIMESTAMP,
-    fecha_fin_venta    TIMESTAMP,
-    estado             VARCHAR2(20) DEFAULT 'ACTIVO',
-    CONSTRAINT PK_CATEGORIAS_EVENTO         PRIMARY KEY (id_categoria),
-    CONSTRAINT FK_CATEGORIAS_EVENTO_EVENTO  FOREIGN KEY (id_evento) REFERENCES BD1.EVENTOS (id_evento)
+CREATE TABLE BD1.PLANES (
+    id_plan             NUMBER GENERATED ALWAYS AS IDENTITY,
+    nombre              VARCHAR2(150) NOT NULL,
+    descripcion         VARCHAR2(1000),
+    estado              VARCHAR2(30)  NOT NULL,
+    id_prestador        NUMBER        NOT NULL,
+    CONSTRAINT PK_PLANES PRIMARY KEY (id_plan),
+    CONSTRAINT FK_PLANES_PRESTADOR FOREIGN KEY (id_prestador) REFERENCES BD1.PRESTADORES (id_prestador)
 );
 
 -- ============================================================
--- 5. CUPONES_DESCUENTO
+-- 5. ROLES
 -- ============================================================
-CREATE TABLE BD1.CUPONES_DESCUENTO (
-    id_cupon              NUMBER GENERATED ALWAYS AS IDENTITY,
-    id_evento             NUMBER NOT NULL,
-    codigo                VARCHAR2(50),
-    porcentaje_descuento  NUMBER(5,2),
-    usos_maximos          NUMBER,
-    usos_actuales         NUMBER DEFAULT 0,
-    fecha_expiracion      TIMESTAMP,
-    activo                NUMBER(1) DEFAULT 1,
-    CONSTRAINT PK_CUPONES_DESCUENTO         PRIMARY KEY (id_cupon),
-    CONSTRAINT FK_CUPONES_DESCUENTO_EVENTO  FOREIGN KEY (id_evento) REFERENCES BD1.EVENTOS (id_evento),
-    CONSTRAINT UQ_CUPON_EVENTO_CODIGO       UNIQUE (id_evento, codigo)
+CREATE TABLE BD1.ROLES (
+    id_rol              NUMBER GENERATED ALWAYS AS IDENTITY,
+    nombre              VARCHAR2(50)  NOT NULL,
+    CONSTRAINT PK_ROLES PRIMARY KEY (id_rol),
+    CONSTRAINT UQ_ROL_NOMBRE UNIQUE (nombre)
 );
 
 -- ============================================================
--- 6. ORDENES_COMPRA
+-- 6. USUARIOS_SISTEMA
 -- ============================================================
-CREATE TABLE BD1.ORDENES_COMPRA (
-    id_orden                  NUMBER GENERATED ALWAYS AS IDENTITY,
-    codigo_orden              VARCHAR2(50),
-    id_comprador              NUMBER NOT NULL,
-    id_evento                 NUMBER NOT NULL,
-    id_cupon                  NUMBER,
-    subtotal                  NUMBER(12,2),
-    total_cargos_servicio     NUMBER(12,2),
-    total_descuento           NUMBER(12,2) DEFAULT 0,
-    monto_total               NUMBER(12,2),
-    estado_orden              VARCHAR2(30),
-    fecha_creacion            TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    fecha_expiracion_reserva  TIMESTAMP,
-    CONSTRAINT PK_ORDENES_COMPRA           PRIMARY KEY (id_orden),
-    CONSTRAINT UQ_ORDEN_CODIGO             UNIQUE (codigo_orden),
-    CONSTRAINT FK_ORDENES_COMPRADOR        FOREIGN KEY (id_comprador) REFERENCES BD1.USUARIOS (id_usuario),
-    CONSTRAINT FK_ORDENES_EVENTO           FOREIGN KEY (id_evento)    REFERENCES BD1.EVENTOS (id_evento),
-    CONSTRAINT FK_ORDENES_CUPON            FOREIGN KEY (id_cupon)     REFERENCES BD1.CUPONES_DESCUENTO (id_cupon),
-    CONSTRAINT CHK_ORDEN_ESTADO            CHECK (estado_orden IN ('PENDIENTE_PAGO','PAGADA','EXPIRADA','CANCELADA','REEMBOLSADA'))
+CREATE TABLE BD1.USUARIOS_SISTEMA (
+    id_usuario          NUMBER GENERATED ALWAYS AS IDENTITY,
+    correo              VARCHAR2(150) NOT NULL,
+    clave_hash          VARCHAR2(255) NOT NULL,
+    estado              VARCHAR2(30)  NOT NULL,
+    id_rol              NUMBER        NOT NULL,
+    CONSTRAINT PK_USUARIOS_SISTEMA PRIMARY KEY (id_usuario),
+    CONSTRAINT UQ_USUARIO_CORREO UNIQUE (correo),
+    CONSTRAINT FK_USUARIO_ROL FOREIGN KEY (id_rol) REFERENCES BD1.ROLES (id_rol)
 );
 
 -- ============================================================
--- 7. TICKETS_INSCRIPCION
+-- 7. PERFILES_CLIENTE
 -- ============================================================
-CREATE TABLE BD1.TICKETS_INSCRIPCION (
-    id_ticket                      NUMBER GENERATED ALWAYS AS IDENTITY,
-    id_orden                       NUMBER NOT NULL,
-    id_categoria                   NUMBER NOT NULL,
-    codigo_ticket_qr               VARCHAR2(100),
-    tipo_documento_asistente       VARCHAR2(20),
-    documento_asistente            VARCHAR2(30),
-    nombre_completo_asistente      VARCHAR2(200),
-    email_asistente                VARCHAR2(150),
-    telefono_asistente             VARCHAR2(20),
-    talla_camiseta                 VARCHAR2(5),
-    contacto_emergencia_nombre     VARCHAR2(200),
-    contacto_emergencia_telefono   VARCHAR2(20),
-    tipo_sangre                    VARCHAR2(10),
-    numero_dorsal                  NUMBER,
-    precio_unitario_pagado         NUMBER(12,2),
-    check_in_realizado             NUMBER(1) DEFAULT 0,
-    fecha_check_in                 TIMESTAMP,
-    estado_ticket                  VARCHAR2(20),
-    CONSTRAINT PK_TICKETS_INSCRIPCION        PRIMARY KEY (id_ticket),
-    CONSTRAINT FK_TICKETS_ORDEN              FOREIGN KEY (id_orden)     REFERENCES BD1.ORDENES_COMPRA (id_orden),
-    CONSTRAINT FK_TICKETS_CATEGORIA          FOREIGN KEY (id_categoria) REFERENCES BD1.CATEGORIAS_EVENTO (id_categoria),
-    CONSTRAINT UQ_TICKET_QR                  UNIQUE (codigo_ticket_qr),
-    CONSTRAINT CHK_TICKET_TALLA              CHECK (talla_camiseta IN ('XS','S','M','L','XL') OR talla_camiseta IS NULL),
-    CONSTRAINT CHK_TICKET_ESTADO             CHECK (estado_ticket IN ('RESERVADO','EMITIDO','UTILIZADO','ANULADO'))
+CREATE TABLE BD1.PERFILES_CLIENTE (
+    id_perfil           NUMBER GENERATED ALWAYS AS IDENTITY,
+    documento           VARCHAR2(30)  NOT NULL,
+    nombre              VARCHAR2(150) NOT NULL,
+    telefono            VARCHAR2(30),
+    id_usuario          NUMBER        NOT NULL,
+    CONSTRAINT PK_PERFILES_CLIENTE PRIMARY KEY (id_perfil),
+    CONSTRAINT UQ_PERFIL_DOCUMENTO UNIQUE (documento),
+    CONSTRAINT UQ_PERFIL_USUARIO UNIQUE (id_usuario),
+    CONSTRAINT FK_PERFIL_USUARIO FOREIGN KEY (id_usuario) REFERENCES BD1.USUARIOS_SISTEMA (id_usuario)
 );
 
 -- ============================================================
--- 8. PAGOS_TRANSACCION
+-- 8. ATRACCIONES
 -- ============================================================
-CREATE TABLE BD1.PAGOS_TRANSACCION (
-    id_pago             NUMBER GENERATED ALWAYS AS IDENTITY,
-    id_orden            NUMBER NOT NULL,
-    pasarela_pago       VARCHAR2(50),
-    referencia_externa  VARCHAR2(100),
-    metodo_pago         VARCHAR2(30),
-    monto               NUMBER(12,2),
-    estado_pago         VARCHAR2(20),
-    fecha_pago          TIMESTAMP,
-    CONSTRAINT PK_PAGOS_TRANSACCION      PRIMARY KEY (id_pago),
-    CONSTRAINT FK_PAGOS_ORDEN            FOREIGN KEY (id_orden) REFERENCES BD1.ORDENES_COMPRA (id_orden),
-    CONSTRAINT CHK_PAGO_METODO           CHECK (metodo_pago IN ('PSE','TARJETA_CREDITO','TARJETA_DEBITO','NEQUI','EFECTIVO')),
-    CONSTRAINT CHK_PAGO_ESTADO           CHECK (estado_pago IN ('APROBADO','RECHAZADO','PENDIENTE','ERROR'))
+CREATE TABLE BD1.ATRACCIONES (
+    id_atraccion        NUMBER GENERATED ALWAYS AS IDENTITY,
+    nombre              VARCHAR2(150) NOT NULL,
+    descripcion         VARCHAR2(1000),
+    id_prestador        NUMBER        NOT NULL,
+    CONSTRAINT PK_ATRACCIONES PRIMARY KEY (id_atraccion),
+    CONSTRAINT FK_ATRACCIONES_PRESTADOR FOREIGN KEY (id_prestador) REFERENCES BD1.PRESTADORES (id_prestador)
 );
 
 -- ============================================================
--- INDEXES – FK columns and common filter / lookup columns
+-- 9. FUNCIONES
 -- ============================================================
--- ORGANIZADORES
-CREATE INDEX IDX_ORGANIZADORES_USUARIO   ON BD1.ORGANIZADORES (id_usuario);
+CREATE TABLE BD1.FUNCIONES (
+    id_funcion          NUMBER GENERATED ALWAYS AS IDENTITY,
+    fecha               DATE          NOT NULL,
+    hora_apertura       INTERVAL DAY(0) TO SECOND(6) NOT NULL,
+    hora_cierre         INTERVAL DAY(0) TO SECOND(6) NOT NULL,
+    estado              VARCHAR2(30)  NOT NULL,
+    id_atraccion        NUMBER        NOT NULL,
+    CONSTRAINT PK_FUNCIONES PRIMARY KEY (id_funcion),
+    CONSTRAINT FK_FUNCIONES_ATRACCION FOREIGN KEY (id_atraccion) REFERENCES BD1.ATRACCIONES (id_atraccion)
+);
 
--- EVENTOS
-CREATE INDEX IDX_EVENTOS_ORGANIZADOR     ON BD1.EVENTOS (id_organizador);
-CREATE INDEX IDX_EVENTOS_CIUDAD          ON BD1.EVENTOS (ciudad);
-CREATE INDEX IDX_EVENTOS_TIPO            ON BD1.EVENTOS (tipo_evento);
-CREATE INDEX IDX_EVENTOS_ESTADO          ON BD1.EVENTOS (estado);
+-- ============================================================
+-- 10. ZONAS
+-- ============================================================
+CREATE TABLE BD1.ZONAS (
+    id_zona             NUMBER GENERATED ALWAYS AS IDENTITY,
+    nombre              VARCHAR2(100) NOT NULL,
+    aforo               NUMBER(10)    NOT NULL,
+    precio              NUMBER(12,2)  NOT NULL,
+    id_funcion          NUMBER        NOT NULL,
+    CONSTRAINT PK_ZONAS PRIMARY KEY (id_zona),
+    CONSTRAINT FK_ZONAS_FUNCION FOREIGN KEY (id_funcion) REFERENCES BD1.FUNCIONES (id_funcion)
+);
 
--- CATEGORIAS_EVENTO
-CREATE INDEX IDX_CATEGORIAS_EVENTO       ON BD1.CATEGORIAS_EVENTO (id_evento);
+-- ============================================================
+-- 11. TIPOS_ENTRADA
+-- ============================================================
+CREATE TABLE BD1.TIPOS_ENTRADA (
+    id_tipo_entrada     NUMBER GENERATED ALWAYS AS IDENTITY,
+    nombre              VARCHAR2(100) NOT NULL,
+    porcentaje_descuento NUMBER(5,2)  NOT NULL,
+    requiere_adulto     NUMBER(1)     DEFAULT 0 NOT NULL,
+    es_adulto           NUMBER(1),
+    CONSTRAINT PK_TIPOS_ENTRADA PRIMARY KEY (id_tipo_entrada)
+);
 
--- CUPONES_DESCUENTO
-CREATE INDEX IDX_CUPONES_EVENTO          ON BD1.CUPONES_DESCUENTO (id_evento);
+-- ============================================================
+-- 12. COMBOS
+-- ============================================================
+CREATE TABLE BD1.COMBOS (
+    id_combo            NUMBER GENERATED ALWAYS AS IDENTITY,
+    nombre              VARCHAR2(150) NOT NULL,
+    precio              NUMBER(12,2)  NOT NULL,
+    dias_vigencia       NUMBER(5)     NOT NULL,
+    estado              VARCHAR2(30)  NOT NULL,
+    CONSTRAINT PK_COMBOS PRIMARY KEY (id_combo)
+);
 
--- ORDENES_COMPRA
-CREATE INDEX IDX_ORDENES_COMPRADOR       ON BD1.ORDENES_COMPRA (id_comprador);
-CREATE INDEX IDX_ORDENES_EVENTO          ON BD1.ORDENES_COMPRA (id_evento);
-CREATE INDEX IDX_ORDENES_CUPON           ON BD1.ORDENES_COMPRA (id_cupon);
-CREATE INDEX IDX_ORDENES_ESTADO          ON BD1.ORDENES_COMPRA (estado_orden);
+-- ============================================================
+-- 13. COMBOS_ATRACCIONES
+-- ============================================================
+CREATE TABLE BD1.COMBOS_ATRACCIONES (
+    id_combo            NUMBER        NOT NULL,
+    id_atraccion        NUMBER        NOT NULL,
+    porcentaje_precio   NUMBER(5,2)   NOT NULL,
+    CONSTRAINT PK_COMBOS_ATRACCIONES PRIMARY KEY (id_combo, id_atraccion),
+    CONSTRAINT FK_CA_COMBO FOREIGN KEY (id_combo) REFERENCES BD1.COMBOS (id_combo),
+    CONSTRAINT FK_CA_ATRACCION FOREIGN KEY (id_atraccion) REFERENCES BD1.ATRACCIONES (id_atraccion)
+);
 
--- TICKETS_INSCRIPCION
-CREATE INDEX IDX_TICKETS_ORDEN           ON BD1.TICKETS_INSCRIPCION (id_orden);
-CREATE INDEX IDX_TICKETS_CATEGORIA       ON BD1.TICKETS_INSCRIPCION (id_categoria);
-CREATE INDEX IDX_TICKETS_ESTADO          ON BD1.TICKETS_INSCRIPCION (estado_ticket);
+-- ============================================================
+-- 14. RESERVAS
+-- ============================================================
+CREATE TABLE BD1.RESERVAS (
+    id_reserva          NUMBER GENERATED ALWAYS AS IDENTITY,
+    fecha_hora          TIMESTAMP     DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    estado              VARCHAR2(30)  NOT NULL,
+    id_perfil           NUMBER        NOT NULL,
+    id_plan             NUMBER,
+    CONSTRAINT PK_RESERVAS PRIMARY KEY (id_reserva),
+    CONSTRAINT FK_RESERVAS_PERFIL FOREIGN KEY (id_perfil) REFERENCES BD1.PERFILES_CLIENTE (id_perfil),
+    CONSTRAINT FK_RESERVAS_PLAN FOREIGN KEY (id_plan) REFERENCES BD1.PLANES (id_plan)
+);
 
--- PAGOS_TRANSACCION
-CREATE INDEX IDX_PAGOS_ORDEN             ON BD1.PAGOS_TRANSACCION (id_orden);
-CREATE INDEX IDX_PAGOS_ESTADO            ON BD1.PAGOS_TRANSACCION (estado_pago);
+-- ============================================================
+-- 15. BOLETAS
+-- ============================================================
+CREATE TABLE BD1.BOLETAS (
+    id_boleta           NUMBER GENERATED ALWAYS AS IDENTITY,
+    codigo              VARCHAR2(100) NOT NULL,
+    estado              VARCHAR2(30)  NOT NULL,
+    precio_pagado       NUMBER(12,2)  NOT NULL,
+    id_reserva          NUMBER        NOT NULL,
+    id_zona             NUMBER,
+    id_tipo_entrada     NUMBER,
+    id_combo            NUMBER,
+    CONSTRAINT PK_BOLETAS PRIMARY KEY (id_boleta),
+    CONSTRAINT UQ_BOLETA_CODIGO UNIQUE (codigo),
+    CONSTRAINT FK_BOLETAS_RESERVA FOREIGN KEY (id_reserva) REFERENCES BD1.RESERVAS (id_reserva),
+    CONSTRAINT FK_BOLETAS_ZONA FOREIGN KEY (id_zona) REFERENCES BD1.ZONAS (id_zona),
+    CONSTRAINT FK_BOLETAS_TIPO FOREIGN KEY (id_tipo_entrada) REFERENCES BD1.TIPOS_ENTRADA (id_tipo_entrada),
+    CONSTRAINT FK_BOLETAS_COMBO FOREIGN KEY (id_combo) REFERENCES BD1.COMBOS (id_combo)
+);
 
-COMMIT;
+-- ============================================================
+-- 16. NOTIFICACIONES
+-- ============================================================
+CREATE TABLE BD1.NOTIFICACIONES (
+    id_notificacion     NUMBER GENERATED ALWAYS AS IDENTITY,
+    asunto              VARCHAR2(200) NOT NULL,
+    mensaje             VARCHAR2(1000) NOT NULL,
+    fecha_hora          TIMESTAMP     DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    leida               NUMBER(1)     DEFAULT 0 NOT NULL,
+    id_usuario          NUMBER        NOT NULL,
+    id_reserva          NUMBER,
+    CONSTRAINT PK_NOTIFICACIONES PRIMARY KEY (id_notificacion),
+    CONSTRAINT FK_NOTIF_USUARIO FOREIGN KEY (id_usuario) REFERENCES BD1.USUARIOS_SISTEMA (id_usuario),
+    CONSTRAINT FK_NOTIF_RESERVA FOREIGN KEY (id_reserva) REFERENCES BD1.RESERVAS (id_reserva)
+);
+
+-- ============================================================
+-- ÍNDICES PARA OPTIMIZAR BÚSQUEDAS Y CLAVES FORÁNEAS
+-- ============================================================
+CREATE INDEX BD1.IDX_PRESTADORES_MUNICIPIO   ON BD1.PRESTADORES(id_municipio);
+CREATE INDEX BD1.IDX_PRESTADORES_TIPO        ON BD1.PRESTADORES(id_tipo_prestador);
+CREATE INDEX BD1.IDX_PLANES_PRESTADOR        ON BD1.PLANES(id_prestador);
+CREATE INDEX BD1.IDX_USUARIOS_ROL            ON BD1.USUARIOS_SISTEMA(id_rol);
+CREATE INDEX BD1.IDX_ATRACCIONES_PRESTADOR   ON BD1.ATRACCIONES(id_prestador);
+CREATE INDEX BD1.IDX_FUNCIONES_ATRACCION     ON BD1.FUNCIONES(id_atraccion);
+CREATE INDEX BD1.IDX_FUNCIONES_FECHA         ON BD1.FUNCIONES(fecha);
+CREATE INDEX BD1.IDX_ZONAS_FUNCION           ON BD1.ZONAS(id_funcion);
+CREATE INDEX BD1.IDX_RESERVAS_PERFIL         ON BD1.RESERVAS(id_perfil);
+CREATE INDEX BD1.IDX_RESERVAS_PLAN           ON BD1.RESERVAS(id_plan);
+CREATE INDEX BD1.IDX_BOLETAS_RESERVA         ON BD1.BOLETAS(id_reserva);
+CREATE INDEX BD1.IDX_BOLETAS_ZONA            ON BD1.BOLETAS(id_zona);
+CREATE INDEX BD1.IDX_BOLETAS_TIPO            ON BD1.BOLETAS(id_tipo_entrada);
+CREATE INDEX BD1.IDX_BOLETAS_COMBO           ON BD1.BOLETAS(id_combo);
+CREATE INDEX BD1.IDX_NOTIFICACIONES_USUARIO  ON BD1.NOTIFICACIONES(id_usuario);
